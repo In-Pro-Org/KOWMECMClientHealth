@@ -168,9 +168,10 @@ Function Update-CCMMachinePolicy {
 		Start-Sleep -Seconds 300
 
 		$LastMachinePolicyRequest = (Get-CimInstance -Query "SELECT LastTriggerTime FROM CCM_Scheduler_History WHERE ScheduleID='{00000000-0000-0000-0000-000000000021}' and UserSID='Machine'" -Namespace 'Root\CCM\Scheduler').LastTriggerTime
-		[datetime]$LastMachinePolicyRequestDate = ([WMI] '').ConvertToDateTime($LastMachinePolicyRequest)
+		#[datetime]$LastMachinePolicyRequestDate = ([WMI] '').ConvertToDateTime($LastMachinePolicyRequest)
+		[datetime]$LastMachinePolicyRequestDate = $LastMachinePolicyRequest
 
-		Write-Host "Last policy request is currently showing: $($LastMachinePolicyRequestDate)"
+		Write-Host "Last policy request is currently showing: $($LastMachinePolicyRequestDate.ToString('dd.MM.yyyy HH:mm:ss'))"
 
 	} until ((($LastMachinePolicyRequest.Length -gt 0) -and ($LastMachinePolicyRequestDate -gt (Get-Date).AddHours(-24))) -or ((Get-Date) -gt $limit))
 

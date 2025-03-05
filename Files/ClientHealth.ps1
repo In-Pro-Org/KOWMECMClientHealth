@@ -56,6 +56,8 @@ Begin {
     $PowerShellVersion = [int]$PSVersionTable.PSVersion.Major
     $global:ScriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
 
+    $Script:CHRegistryPath = 'HKLM:\Software\ConfigMgrClientHealth'
+    $Script:LastRunRegistryValueName = 'LastRun'
     $Script:LogFolder = "$env:ProgramData\Kostwein" #'C:\Temp\ClientHealth'
     $Script:ErrorLog = 'ScriptError.log'
 
@@ -1373,7 +1375,6 @@ If specified, the log file will be reset
                 $dnsAddressList = $dnsAddressList -replace ('%(.*)', '')
             }
         }
-
         else {
             # This method cannot guarantee to only resolve against DNS sever. Local cache can be used in some circumstances.
             # For Windows 7 only
@@ -2812,7 +2813,9 @@ If specified, the log file will be reset
                 if ($service.StartType -ne 'Automatic') {
                     $text = "Configuring service $Name StartupType to: Automatic (Trigger Start)..."
                     Set-Service -Name $service.Name -StartupType Automatic
-                } else { $text = "Service $Name startup: OK" }
+                } else {
+                    $text = "Service $Name startup: OK"
+                }
                 Write-Output $text
             } else {
                 # Automatic delayed requires the use of sc.exe
@@ -4076,8 +4079,18 @@ If specified, the log file will be reset
         # Write-Verbose "Start New-LogObject"
 
         #if ($PowerShellVersion -ge 6) {
-        $OS = Get-CimInstance -class Win32_OperatingSystem
-        $CS = Get-CimInstance -class Win32_ComputerSystem
+        try {
+            $OS = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
+        }
+        catch {
+            #Repair-WMI
+            Invoke-WMIRepair
+        }
+        finally {
+            $OS = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
+            $CS = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction SilentlyContinue
+        }
+
 
         if ($CS.Manufacturer -like 'Lenovo') {
             $Model = (Get-CimInstance Win32_ComputerSystemProduct).Version
@@ -4387,8 +4400,6 @@ Process {
     #TODO: Debugflag entfernen
     $Debug = $False
 
-    $Script:CHRegistryPath = 'HKLM:\Software\ConfigMgrClientHealth'
-
     Write-Verbose 'Starting precheck. Determing if script will run or not.'
 
     # Veriy script is running with administrative priveleges.
@@ -4422,7 +4433,10 @@ Process {
             Write-Host $StartupText2
 
             $ScriptVersionRegistryValueName = 'ScriptVersion'
-            Set-RegistryValue -Path $Script:CHRegistryPath -Name $ScriptVersionRegistryValueName -Value $Version
+            if ($null -ne $Version -and $null -ne $Script:CHRegistryPath) {
+                Set-RegistryValue -Path $Script:CHRegistryPath -Name $ScriptVersionRegistryValueName -Value $Version
+            }
+
         }
     }
 
@@ -4467,7 +4481,7 @@ Process {
     }
 
     $RegistryKey = 'HKLM:\Software\ConfigMgrClientHealth'
-    $LastRunRegistryValueName = 'LastRun'
+    #$LastRunRegistryValueName = 'LastRun'
 
     #Get the last run from the registry, defaulting to the minimum date value if the script has never ran.
     #TODO: Datum und Uhrzeit besser und als Function integrieren.
@@ -4475,7 +4489,7 @@ Process {
     $Culture = [System.Globalization.CultureInfo]::InvariantCulture
     try {
         #[datetime]$LastRun = Get-RegistryValue -Path $RegistryKey -Name $LastRunRegistryValueName
-        $LastRunEntry = Get-RegistryValue -Path $Script:CHRegistryPath -Name $LastRunRegistryValueName
+        $LastRunEntry = Get-RegistryValue -Path $Script:CHRegistryPath -Name $Script:LastRunRegistryValueName
         <#
         $LastRun = Get-RegistryValue -Path $RegistryKey -Name $LastRunRegistryValueName
         #>
@@ -4738,7 +4752,7 @@ End {
 
     #Set the last run.
     $Date = Get-Date -Format 'dd.MM.yyyy HH:mm:ss'
-    Set-RegistryValue -Path $Script:CHRegistryPath -Name $LastRunRegistryValueName -Value $Date
+    Set-RegistryValue -Path $Script:CHRegistryPath -Name $Script:LastRunRegistryValueName -Value $Date
     Write-Output "Setting last ran to $($Date)"
 
     if ($LocalLogging -like 'true') {
