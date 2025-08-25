@@ -1,0 +1,15 @@
+name: KOWMECMClientHealth
+id: ari:cloud:compass:eddcc978-84fc-448e-904c-0d4d7a6ccae6:component/dcebf165-b94d-4d6f-a806-e63f9a99f66a/b21efeaa-f1cf-41dd-8b39-dba63efdfea6
+description: null
+configVersion: 1
+typeId: SERVICE
+fields:
+  tier: 4
+links: []
+relationships:
+  DEPENDS_ON: []
+labels:
+  - language:powershell
+  - source:github
+  - synced-with-jsm
+customFields: null
